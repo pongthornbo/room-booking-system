@@ -4,63 +4,66 @@ import { UpdateRoomDto } from './dto/update-room.dto';
 
 @Injectable()
 export class RoomsService {
-  private readonly rooms = [
-    {
-      id: 1,
-      name: 'Meeting Room A',
-      capacity: 6,
-    },
-    {
-      id: 2,
-      name: 'Meeting Room B',
-      capacity: 12,
-    },
-  ];
+    private readonly rooms = [
+        {
+            id: 1,
+            name: 'Meeting Room A',
+            capacity: 6,
+        },
+        {
+            id: 2,
+            name: 'Meeting Room B',
+            capacity: 12,
+        },
+    ];
 
-  findAll() {
-    return this.rooms;
-  }
+    private nextID = 3;
 
-  findOne(id: number) {
-    const room = this.rooms.find((room) => room.id === id);
-
-    if (!room) {
-      throw new NotFoundException(`Room with id ${id} not found`);
+    findAll() {
+        return this.rooms;
     }
 
-    return room;
-  }
+    findOne(id: number) {
+        const room = this.rooms.find((room) => room.id === id);
 
-  create(createRoomDto: CreateRoomDto) {
-    const newRoom = { id: this.rooms.length + 1, ...createRoomDto };
-    this.rooms.push(newRoom);
+        if (!room) {
+        throw new NotFoundException(`Room with id ${id} not found`);
+        }
 
-    return newRoom;
-  }
-
-  update(id: number, updateRoomDto: UpdateRoomDto) {
-    const room = this.findOne(id);
-
-    if (updateRoomDto.name !== undefined) {
-      room.name = updateRoomDto.name;
+        return room;
     }
 
-    if (updateRoomDto.capacity !== undefined) {
-      room.capacity = updateRoomDto.capacity;
+    create(createRoomDto: CreateRoomDto) {
+        const newRoom = { id: this.nextID, ...createRoomDto };
+        this.nextID++;
+        this.rooms.push(newRoom);
+
+        return newRoom;
     }
 
-    return room;
-  }
+    update(id: number, updateRoomDto: UpdateRoomDto) {
+        const room = this.findOne(id);
 
-  delete(id: number) {
-    const roomIndex = this.rooms.findIndex((room) => room.id === id);
+        if (updateRoomDto.name !== undefined) {
+        room.name = updateRoomDto.name;
+        }
 
-    if (roomIndex === -1) {
-      throw new NotFoundException(`Room with id ${id} not found`);
+        if (updateRoomDto.capacity !== undefined) {
+        room.capacity = updateRoomDto.capacity;
+        }
+
+        return room;
     }
 
-    this.rooms.splice(roomIndex, 1);
+    delete(id: number) {
+        const roomIndex = this.rooms.findIndex((room) => room.id === id);
 
-    return null;
-  }
+        if (roomIndex === -1) {
+        throw new NotFoundException(`Room with id ${id} not found`);
+        }
+
+        this.rooms.splice(roomIndex, 1);
+
+        return null;
+    }
 }
