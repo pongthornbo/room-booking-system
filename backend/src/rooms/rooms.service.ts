@@ -1,69 +1,44 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { CreateRoomDto } from './dto/create-room.dto';
 import { UpdateRoomDto } from './dto/update-room.dto';
+import { PrismaService } from 'src/prisma/prisma.service';
 
 @Injectable()
 export class RoomsService {
-    private readonly rooms = [
-        {
-            id: 1,
-            name: 'Meeting Room A',
-            capacity: 6,
-        },
-        {
-            id: 2,
-            name: 'Meeting Room B',
-            capacity: 12,
-        },
-    ];
+  constructor(private readonly prisma: PrismaService) {}
 
-    private nextID = 3;
+  async findAll() {
+    return await this.prisma.room.findMany();
+  }
 
-    findAll() {
-        return this.rooms;
+  async findOne(id: number) {
+    const room = await this.prisma.room.findUnique({ where: { id } });
+
+    if (!room) {
+      throw new NotFoundException(`Room with id ${id} not found`);
     }
 
-    findOne(id: number) {
-        const room = this.rooms.find((room) => room.id === id);
+    return room;
+  }
 
-        if (!room) {
-        throw new NotFoundException(`Room with id ${id} not found`);
-        }
+  async create(createRoomDto: CreateRoomDto) {
+    return await this.prisma.room.create({ data: createRoomDto });
+  }
 
-        return room;
-    }
+  async update(id: number, updateRoomDto: UpdateRoomDto) {
+    await this.findOne(id);
+    const updatedRoom = await this.prisma.room.update({
+      where: { id },
+      data: updateRoomDto,
+    });
 
-    create(createRoomDto: CreateRoomDto) {
-        const newRoom = { id: this.nextID, ...createRoomDto };
-        this.nextID++;
-        this.rooms.push(newRoom);
+    return updatedRoom;
+  }
 
-        return newRoom;
-    }
+  async delete(id: number) {
+    await this.findOne(id);
+    const deletedRoom = await this.prisma.room.delete({ where: { id } });
 
-    update(id: number, updateRoomDto: UpdateRoomDto) {
-        const room = this.findOne(id);
-
-        if (updateRoomDto.name !== undefined) {
-        room.name = updateRoomDto.name;
-        }
-
-        if (updateRoomDto.capacity !== undefined) {
-        room.capacity = updateRoomDto.capacity;
-        }
-
-        return room;
-    }
-
-    delete(id: number) {
-        const roomIndex = this.rooms.findIndex((room) => room.id === id);
-
-        if (roomIndex === -1) {
-        throw new NotFoundException(`Room with id ${id} not found`);
-        }
-
-        this.rooms.splice(roomIndex, 1);
-
-        return null;
-    }
+    return deletedRoom;
+  }
 }
