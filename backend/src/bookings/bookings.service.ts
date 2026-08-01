@@ -1,4 +1,9 @@
-import { BadRequestException, ConflictException, Injectable, NotFoundException } from '@nestjs/common';
+import {
+  BadRequestException,
+  ConflictException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import { CreateBookingDto } from './dto/create-booking.dto';
 import { PrismaService } from 'src/prisma/prisma.service';
 
@@ -8,8 +13,8 @@ export class BookingsService {
 
   async findAll() {
     return await this.prisma.booking.findMany({
-        orderBy: { startTime: 'asc' },
-        include: {room: {select: {id: true, name: true, capacity: true}}}
+      orderBy: { startTime: 'asc' },
+      include: { room: { select: { id: true, name: true, capacity: true } } },
     });
   }
 
@@ -31,29 +36,35 @@ export class BookingsService {
   async create(createBookingDto: CreateBookingDto) {
     const startTime = new Date(createBookingDto.startTime);
     const endTime = new Date(createBookingDto.endTime);
-    if (startTime >= endTime){
-        throw new BadRequestException('Start time must be before end time');
+    if (startTime >= endTime) {
+      throw new BadRequestException('Start time must be before end time');
     }
 
     const conflictingBooking = await this.prisma.booking.findFirst({
-        where: {
-            roomId: createBookingDto.roomId,
-            startTime: {
-                lt: endTime,
-            },
-            endTime: {
-                gt: startTime,
-            },
-        }
-    })
+      where: {
+        roomId: createBookingDto.roomId,
+        startTime: {
+          lt: endTime,
+        },
+        endTime: {
+          gt: startTime,
+        },
+      },
+    });
 
-    if (conflictingBooking){
-        throw new ConflictException('Booking time is conflict');
+    if (conflictingBooking) {
+      throw new ConflictException(
+        'This room is already booked during the selected time',
+      );
     }
 
-    const room = await this.prisma.room.findUnique({where: { id: createBookingDto.roomId }});
+    const room = await this.prisma.room.findUnique({
+      where: { id: createBookingDto.roomId },
+    });
     if (!room) {
-        throw new NotFoundException(`Room with id ${createBookingDto.roomId} not found`);
+      throw new NotFoundException(
+        `Room with id ${createBookingDto.roomId} not found`,
+      );
     }
 
     return this.prisma.booking.create({
