@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, ConflictException, Injectable, NotFoundException } from '@nestjs/common';
 import { CreateBookingDto } from './dto/create-booking.dto';
 import { PrismaService } from 'src/prisma/prisma.service';
 
@@ -29,20 +29,38 @@ export class BookingsService {
   }
 
   async create(createBookingDto: CreateBookingDto) {
-    const room = await this.prisma.room.findUnique({
-      where: { id: createBookingDto.roomId },
-    });
+    const startTime = new Date(createBookingDto.startTime);
+    const endTime = new Date(createBookingDto.endTime);
+    if (startTime >= endTime){
+        throw new BadRequestException('Start time must be before end time');
+    }
+
+    const conflictingBooking = await this.prisma.booking.findFirst({
+        where: {
+            roomId: createBookingDto.roomId,
+            startTime: {
+                lt: endTime,
+            },
+            endTime: {
+                gt: startTime,
+            },
+        }
+    })
+
+    if (conflictingBooking){
+        throw new ConflictException('Booking time is conflict');
+    }
+
+    const room = await this.prisma.room.findUnique({where: { id: createBookingDto.roomId }});
     if (!room) {
-      throw new NotFoundException(
-        `Room with id ${createBookingDto.roomId} not found`,
-      );
+        throw new NotFoundException(`Room with id ${createBookingDto.roomId} not found`);
     }
 
     return this.prisma.booking.create({
       data: {
         title: createBookingDto.title,
-        startTime: new Date(createBookingDto.startTime),
-        endTime: new Date(createBookingDto.endTime),
+        startTime: startTime,
+        endTime: endTime,
         roomId: createBookingDto.roomId,
       },
       include: {
