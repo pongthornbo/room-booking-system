@@ -6,6 +6,7 @@ import {
 } from '@nestjs/common';
 import { CreateBookingDto } from './dto/create-booking.dto';
 import { PrismaService } from 'src/prisma/prisma.service';
+import { UpdateBookingDto } from './dto/update-booking.dto';
 
 @Injectable()
 export class BookingsService {
@@ -43,12 +44,8 @@ export class BookingsService {
     const conflictingBooking = await this.prisma.booking.findFirst({
       where: {
         roomId: createBookingDto.roomId,
-        startTime: {
-          lt: endTime,
-        },
-        endTime: {
-          gt: startTime,
-        },
+        startTime: { lt: endTime },
+        endTime: { gt: startTime },
       },
     });
 
@@ -74,9 +71,57 @@ export class BookingsService {
         endTime: endTime,
         roomId: createBookingDto.roomId,
       },
-      include: {
-        room: { select: { id: true, name: true, capacity: true } },
+      include: { room: { select: { id: true, name: true, capacity: true } } },
+    });
+  }
+
+  async update(id: number, updateBookingDto: UpdateBookingDto) {
+    const existingBooking = await this.findOne(id);
+
+    const startTime = updateBookingDto.startTime
+      ? new Date(updateBookingDto.startTime)
+      : existingBooking.startTime;
+    const endTime = updateBookingDto.endTime
+      ? new Date(updateBookingDto.endTime)
+      : existingBooking.endTime;
+    if (startTime >= endTime) {
+      throw new BadRequestException('Start time must be before end time');
+    }
+
+    const roomId = updateBookingDto.roomId ?? existingBooking.roomId;
+
+    const conflictingBooking = await this.prisma.booking.findFirst({
+      where: {
+        roomId,
+        id: { not: id },
+        startTime: { lt: endTime },
+        endTime: { gt: startTime },
       },
+    });
+    if (conflictingBooking) {
+      throw new ConflictException(
+        'This room is already booked during the selected time',
+      );
+    }
+
+    const room = await this.prisma.room.findUnique({ where: { id: roomId } });
+    if (!room) {
+      throw new NotFoundException(`Room with id ${roomId} not found`);
+    }
+
+    return this.prisma.booking.update({
+      where: { id },
+      data: { title: updateBookingDto.title, startTime, endTime, roomId },
+      include: { room: { select: { id: true, name: true, capacity: true } } },
+    });
+  }
+
+  async delete(id: number) {
+    await this.findOne(id);
+
+    return this.prisma.booking.delete({
+      where: { id },
+      include: { room: { select: { id: true, name: true, capacity: true } } },
     });
   }
 }
