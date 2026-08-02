@@ -1,4 +1,8 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import {
+  ConflictException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import { CreateRoomDto } from './dto/create-room.dto';
 import { UpdateRoomDto } from './dto/update-room.dto';
 import { PrismaService } from 'src/prisma/prisma.service';
@@ -37,8 +41,16 @@ export class RoomsService {
 
   async delete(id: number) {
     await this.findOne(id);
-    const deletedRoom = await this.prisma.room.delete({ where: { id } });
 
-    return deletedRoom;
+    const existingBooking = await this.prisma.booking.findFirst({
+      where: { roomId: id },
+    });
+    if (existingBooking) {
+      throw new ConflictException(
+        `Cannot delete room because it has existing bookings`,
+      );
+    }
+
+    return this.prisma.room.delete({ where: { id } });
   }
 }
